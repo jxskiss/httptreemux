@@ -15,7 +15,7 @@ When using Go Modules, import this repository with `import "github.com/dimfeld/h
 There are a lot of good routers out there. But looking at the ones that were really lightweight, I couldn't quite get something that fit with the route patterns I wanted. The code itself is simple enough, so I spent an evening writing this.
 
 ## Handler
-The handler is a simple function with the prototype `func(w http.ResponseWriter, r *http.Request, params map[string]string)`. The params argument contains the parameters parsed from wildcards, catch-all and regexp named capturing groups in the URL, as described below. This type is aliased as httptreemux.HandlerFunc.
+The handler is a simple function with the prototype `func(w http.ResponseWriter, r *http.Request, params map[string]string)`. The params argument contains the parameters parsed from wildcards, regexp named capturing groups and catch-alls in the URL, as described below. This type is aliased as httptreemux.HandlerFunc.
 
 ### Using http.HandlerFunc
 Due to the inclusion of the [context](https://godoc.org/context) package as of Go 1.7, `httptreemux` now supports handlers of type [http.HandlerFunc](https://godoc.org/net/http#HandlerFunc). There are two ways to enable this support.
@@ -81,7 +81,7 @@ http.ListenAndServe(":8080", router)
 
 
 ## Routing Rules
-The syntax here is also modeled after httprouter. Each variable in a path may match on one segment only, except for an optional catch-all variable or a regular expression at the end of the URL.
+The syntax here is also modeled after httprouter. Each variable in a path may match on one segment only, except for a regular expression or an optional catch-all variable at the end of the URL.
 
 Some examples of valid URL patterns are:
 * `/post/all`
@@ -99,13 +99,13 @@ Note that all of the above URL patterns may exist concurrently in the router.
 
 Path elements starting with `:` indicate a wildcard in the path. A wildcard will only match on a single path segment. That is, the pattern `/post/:postid` will match on `/post/1` or `/post/1/`, but not `/post/1/2`.
 
-A path element starting with `~` is a regexp route, all text after `~` is considered the regular expression. Regexp routes are checked after static and wildcards routes. Multiple regexp are allowed to be registered with same prefix, they will be checked in their registering order. Named capturing groups will be passed to handler as params.
+A path element starting with `~` is a regexp route, all text after `~` is considered the regular expression. Regexp routes are checked after static and wildcards routes. Multiple regexp are allowed to be registered with same prefix, they will be checked in the registering order. Named capturing groups will be passed to handler as params.
 
 A path element starting with `*` is a catch-all, whose value will be a string containing all text in the URL matched by the wildcards. For example, with a pattern of `/images/*path` and a requested URL `images/abc/def`, path would contain `abc/def`. A catch-all path will not match an empty string, so in this example a separate route would need to be installed if you also want to match `/images/`.
 
-#### Using : * and ~ in routing patterns
+#### Using : ~ and * in routing patterns
 
-The characters `:`, `*` and `~` can be used at the beginning of a path segment by escaping them with a backslash. A double backslash at the beginning of a segment is interpreted as a single backslash. These escapes are only checked at the very beginning of a path segment; they are not necessary or processed elsewhere in a token.
+The characters `:`, `~` and `*` can be used at the beginning of a path segment by escaping them with a backslash. A double backslash at the beginning of a segment is interpreted as a single backslash. These escapes are only checked at the very beginning of a path segment; they are not necessary or processed elsewhere in a token.
 
 ```go
 router.GET("/foo/\\*starToken", handler)     // matches /foo/*starToken
@@ -134,8 +134,8 @@ The priority rules in the router are simple.
 
 1. Static path segments take the highest priority. If a segment and its subtree are able to match the URL, that match is returned.
 2. Wildcards take second priority. For a particular wildcard to match, that wildcard and its subtree must match the URL.
-3. Regexp routes are checked after static and wildcards routes. Multiple regexp routes under a same prefix are checked in their registering order, if a regexp route matches the URL, the match is returned.
-4. Finally, a catch-all rule will match when the earlier path segments have matched, and none of the static or wildcard conditions have matched. Catch-all rules must be at the end of a pattern.
+3. Regexp routes are checked after static and wildcards routes. Multiple regexp routes under a same prefix are checked in the registering order, if a regexp route matches the URL, the match is returned. Regular expression must be at the end of a pattern.
+4. Finally, a catch-all rule will match when the earlier path segments have matched, and none of above rules have matched. Catch-all rules must be at the end of a pattern.
 
 So with the following patterns adapted from [simpleblog](https://www.github.com/dimfeld/simpleblog), we'll see certain matches:
 ```go
@@ -203,11 +203,13 @@ You can optionally allow case-insensitive routing by setting the _CaseInsensitiv
 This allows you to make all routes case-insensitive. For example:
 ```go
 router := httptreemux.New()
-router.CaseInsensitive
+router.CaseInsensitive = true
 router.GET("/My-RoUtE", pageHandler)
 ```
 In this example, performing a GET request to /my-route will match the route and execute the _pageHandler_ functionality. 
-It's important to note that when using case-insensitive routing, the CaseInsensitive property must be set before routes are defined or there may be unexpected side effects. 
+It's important to note that when using case-insensitive routing, the CaseInsensitive property must be set before routes are defined or there may be unexpected side effects.
+
+Also note that when case-insensitive routing is enabled, regexp expressions will also be converted to lowercase, thus regexp routes may not work as expected. It's better to not use regexp routes and case-insensitive routing together.
 
 #### Rationale/Usage
 On a POST request, most browsers that receive a 301 will submit a GET request to the redirected URL, meaning that any data will likely be lost. If you want to handle and avoid this behavior, you may use Redirect307, which causes most browsers to resubmit the request using the original method and request body.

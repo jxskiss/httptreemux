@@ -1058,8 +1058,9 @@ func TestLookup(t *testing.T) {
 	tryLookup("GET", "/abc/def/ghi", true, http.StatusOK)
 
 	tryLookup("GET", "/smith/something", true, http.StatusOK)
-	tryLookup("POST", "/smith/something", false, http.StatusNotFound)
+	tryLookup("POST", "/smith/something", false, http.StatusMethodNotAllowed)
 	tryLookup("GET", "/smith/***something", false, http.StatusNotFound)
+	tryLookup("POST", "/smith/***something", false, http.StatusNotFound)
 
 	router.RedirectBehavior = Redirect307
 	tryLookup("POST", "/user/dimfeld/", true, http.StatusTemporaryRedirect)
